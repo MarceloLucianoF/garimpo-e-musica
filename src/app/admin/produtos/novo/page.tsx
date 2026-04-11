@@ -24,9 +24,9 @@ const productSchema = z
   .object({
     type: z.enum(["music", "fashion"]),
     title: z.string().min(3, "Informe um título com pelo menos 3 caracteres."),
-    price: z.coerce.number().min(0.01, "Informe um preço válido."),
+    price: z.number().min(0.01, "Informe um preço válido."),
     description: z.string().min(10, "Adicione uma descrição com mais contexto."),
-    stock: z.coerce.number().int().min(0, "O estoque não pode ser negativo."),
+    stock: z.number().int().min(0, "O estoque não pode ser negativo."),
     availableOnline: z.boolean(),
     images: z.custom<FileList>(
       (value) => value instanceof FileList && value.length > 0,
@@ -79,7 +79,7 @@ const conditionOptions = ["M", "NM", "VG+", "VG", "G"] as const;
 const fashionCategories = ["Jaquetas", "Camisetas", "Calças", "Vestidos", "Acessórios", "Outros"];
 const fashionSizes = ["PP", "P", "M", "G", "GG", "Único"];
 
-const defaultValues: ProductFormValues = {
+const defaultValues: Omit<ProductFormValues, "images"> = {
   type: "music",
   title: "",
   price: 0,
@@ -278,7 +278,7 @@ export default function NovoProdutoPage() {
                   min="0"
                   className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition-colors focus:border-garimpo-rust"
                   placeholder="0,00"
-                  {...register("price")}
+                  {...register("price", { valueAsNumber: true })}
                 />
                 {errors.price && <p className="text-sm text-red-600">{errors.price.message}</p>}
               </label>
@@ -290,7 +290,7 @@ export default function NovoProdutoPage() {
                   min="0"
                   className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition-colors focus:border-garimpo-rust"
                   placeholder="1"
-                  {...register("stock")}
+                  {...register("stock", { valueAsNumber: true })}
                 />
                 {errors.stock && <p className="text-sm text-red-600">{errors.stock.message}</p>}
               </label>
