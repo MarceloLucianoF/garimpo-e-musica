@@ -4,33 +4,54 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { Boxes, ClipboardList, Loader2, PackagePlus, ShoppingBag, Users } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { AlertCircle, Boxes, ClipboardList, Loader2, PackagePlus, Wallet } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
 
-const stats = [
-	{
-		title: "Produtos cadastrados",
-		value: "42",
-		detail: "Catálogo ativo",
-		icon: Boxes,
-	},
-	{
-		title: "Pedidos hoje",
-		value: "7",
-		detail: "Fluxo diário",
-		icon: ShoppingBag,
-	},
-	{
-		title: "Clientes atendidos",
-		value: "18",
-		detail: "Loja + online",
-		icon: Users,
-	},
-];
+type ProductMetrics = {
+	totalProducts: number;
+	activeOnlineProducts: number;
+	totalStockValue: number;
+};
 
 export default function DashboardPage() {
 	const router = useRouter();
 	const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+	const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+	const [metricsError, setMetricsError] = useState("");
+	const [metrics, setMetrics] = useState<ProductMetrics>({
+		totalProducts: 0,
+		activeOnlineProducts: 0,
+		totalStockValue: 0,
+	});
+
+	const loadMetrics = async () => {
+		setMetricsError("");
+		setIsLoadingMetrics(true);
+
+		try {
+			const snapshot = await getDocs(collection(db, "products"));
+			const data = snapshot.docs.map((doc) => doc.data() as { price?: number; stock?: number; availableOnline?: boolean });
+
+			const totalProducts = data.length;
+			const activeOnlineProducts = data.filter((item) => item.availableOnline === true).length;
+			const totalStockValue = data.reduce((total, item) => {
+				const price = typeof item.price === "number" ? item.price : 0;
+				const stock = typeof item.stock === "number" ? item.stock : 0;
+				return total + price * stock;
+			}, 0);
+
+			setMetrics({
+				totalProducts,
+				activeOnlineProducts,
+				totalStockValue,
+			});
+		} catch {
+			setMetricsError("Não foi possível carregar os dados do dashboard agora.");
+		} finally {
+			setIsLoadingMetrics(false);
+		}
+	};
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -40,10 +61,32 @@ export default function DashboardPage() {
 			}
 
 			setIsCheckingAuth(false);
+			void loadMetrics();
 		});
 
 		return unsubscribe;
 	}, [router]);
+
+	const stats = [
+		{
+			title: "Total de produtos",
+			value: metrics.totalProducts.toString(),
+			detail: "Itens cadastrados",
+			icon: Boxes,
+		},
+		{
+			title: "Produtos ativos online",
+			value: metrics.activeOnlineProducts.toString(),
+			detail: "Disponíveis para vitrine",
+			icon: ClipboardList,
+		},
+		{
+			title: "Valor total em estoque",
+			value: `R$ ${metrics.totalStockValue.toFixed(2).replace(".", ",")}`,
+			detail: "Soma de preço x estoque",
+			icon: Wallet,
+		},
+	];
 
 	if (isCheckingAuth) {
 		return (
@@ -84,6 +127,13 @@ export default function DashboardPage() {
 					</div>
 				</header>
 
+				{metricsError && (
+					<div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+						<AlertCircle size={16} className="mt-0.5 shrink-0" />
+						{metricsError}
+					</div>
+				)}
+
 				<section className="grid gap-4 md:grid-cols-3">
 					{stats.map((item) => {
 						const Icon = item.icon;
@@ -97,7 +147,11 @@ export default function DashboardPage() {
 									<Icon size={18} />
 								</div>
 								<p className="text-sm text-garimpo-dark/70">{item.title}</p>
-								<p className="mt-2 font-display text-4xl font-bold text-garimpo-dark">{item.value}</p>
+								{isLoadingMetrics ? (
+									<div className="mt-2 h-10 w-28 animate-pulse rounded-lg bg-zinc-200" />
+								) : (
+									<p className="mt-2 font-display text-4xl font-bold text-garimpo-dark">{item.value}</p>
+								)}
 								<p className="mt-1 text-sm text-garimpo-dark/55">{item.detail}</p>
 							</article>
 						);

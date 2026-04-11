@@ -2,55 +2,110 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { ShoppingBag, MessageCircle, MapPin, Truck } from "lucide-react";
+import { db } from "@/lib/firebase";
 import { useCartStore } from "@/store/cartStore";
 import { VinylLoader } from "@/components/ui/VinylLoader";
 
-// Mock de um produto (na versão real, faremos um fetch no Firestore usando o slug)
-const MOCK_PRODUCT = {
-  id: "led-zeppelin-iv",
-  title: "Led Zeppelin IV",
-  artist: "Led Zeppelin",
-  price: 280.00,
-  format: "Vinil (LP 12\")",
-  genre: "Classic Rock",
-  conditionMedia: "NM (Near Mint)",
-  conditionSleeve: "VG+ (Very Good Plus)",
-  stock: 1,
-  description: "Prensagem original em excelente estado. A mídia quase não tem marcas de uso, tocando de ponta a ponta sem chiados. A capa gatefold possui leve desgaste nas bordas devido ao tempo na prateleira.",
-  images: ["/vinil-ledzeppelin.jpg"]
+type ProductImage = {
+  url: string;
+};
+
+type Product = {
+  id: string;
+  title?: string;
+  artist?: string;
+  price?: number;
+  format?: string;
+  conditionMedia?: string;
+  conditionSleeve?: string;
+  description?: string;
+  images?: ProductImage[];
 };
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const addItem = useCartStore((state) => state.addItem);
-  
-  // Estado para controlar a nossa animação surpresa
+
   const [isLoading, setIsLoading] = useState(true);
+  const [product, setProduct] = useState<Product | null>(null);
+
+  const slugParam = Array.isArray(slug) ? slug[0] : slug;
 
   useEffect(() => {
-    // Simulando o tempo de busca no banco de dados para ver o disco girando
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, [slug]);
+    const loadProduct = async () => {
+      if (!slugParam) {
+        setProduct(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const productQuery = query(
+          collection(db, "products"),
+          where("slug", "==", slugParam),
+          limit(1),
+        );
+
+        const snapshot = await getDocs(productQuery);
+
+        if (snapshot.empty) {
+          setProduct(null);
+          return;
+        }
+
+        const doc = snapshot.docs[0];
+        setProduct({
+          id: doc.id,
+          ...(doc.data() as Omit<Product, "id">),
+        });
+      } catch {
+        setProduct(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadProduct();
+  }, [slugParam]);
 
   if (isLoading) {
     return <VinylLoader text="Preparando a agulha..." />;
   }
 
+  if (!product) {
+    return (
+      <main className="mx-auto flex min-h-[70vh] w-full max-w-3xl flex-col items-center justify-center px-4 text-center">
+        <h1 className="font-display text-4xl font-bold text-garimpo-dark">Disco não encontrado</h1>
+        <p className="mt-4 text-garimpo-dark/70">
+          Não encontramos este item no acervo atual. Ele pode ter sido removido ou esgotado.
+        </p>
+        <Link
+          href="/musica"
+          className="mt-8 inline-flex items-center justify-center rounded-full bg-garimpo-rust px-5 py-3 font-medium text-white transition-colors hover:bg-garimpo-rust-hover"
+        >
+          Voltar para Música
+        </Link>
+      </main>
+    );
+  }
+
   const handleAddToCart = () => {
     addItem({
-      id: MOCK_PRODUCT.id,
-      title: MOCK_PRODUCT.title,
-      artist: MOCK_PRODUCT.artist,
-      price: MOCK_PRODUCT.price,
-      format: MOCK_PRODUCT.format,
-      image: MOCK_PRODUCT.images[0],
+      id: product.id,
+      title: product.title || "Sem título",
+      artist: product.artist || "Artista não informado",
+      price: product.price || 0,
+      format: product.format || "vinyl_lp",
+      image: product.images?.[0]?.url,
       quantity: 1,
     });
-    // Opcional: Aqui poderíamos abrir o Drawer do carrinho automaticamente
   };
 
   return (
@@ -61,8 +116,8 @@ export default function ProductDetailPage() {
         <div className="flex flex-col gap-4">
           <div className="relative aspect-square w-full rounded-xl overflow-hidden shadow-card border border-garimpo-dark/5 bg-zinc-100">
             <Image
-              src={MOCK_PRODUCT.images[0]}
-              alt={MOCK_PRODUCT.title}
+              src={product.images?.[0]?.url || "/vinil-card.jpg"}
+              alt={product.title || "Produto musical"}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -78,27 +133,27 @@ export default function ProductDetailPage() {
           {/* Cabeçalho do Produto */}
           <div className="mb-8">
             <h1 className="font-display text-4xl md:text-5xl font-bold text-garimpo-dark leading-tight mb-2">
-              {MOCK_PRODUCT.title}
+              {product.title || "Sem título"}
             </h1>
             <h2 className="font-sans text-xl text-garimpo-dark/70 font-medium">
-              {MOCK_PRODUCT.artist}
+              {product.artist || "Artista não informado"}
             </h2>
           </div>
 
           <div className="text-3xl font-sans font-bold text-garimpo-rust mb-6">
-            R$ {MOCK_PRODUCT.price.toFixed(2).replace('.', ',')}
+            R$ {(product.price || 0).toFixed(2).replace('.', ',')}
           </div>
 
           {/* Badges de Condição Críticos para Vinil */}
           <div className="flex flex-wrap gap-3 mb-8">
             <span className="bg-garimpo-dark text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider">
-              Mídia: {MOCK_PRODUCT.conditionMedia}
+              Mídia: {product.conditionMedia || "VG"}
             </span>
             <span className="bg-garimpo-dark/10 text-garimpo-dark text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider">
-              Capa: {MOCK_PRODUCT.conditionSleeve}
+              Capa: {product.conditionSleeve || "VG"}
             </span>
             <span className="border border-garimpo-dark/20 text-garimpo-dark text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider">
-              {MOCK_PRODUCT.format}
+              {product.format || "Vinil"}
             </span>
           </div>
 
@@ -146,7 +201,7 @@ export default function ProductDetailPage() {
           <div>
             <h3 className="font-sans font-bold text-garimpo-dark mb-3">Sobre este garimpo</h3>
             <p className="font-sans text-garimpo-dark/80 leading-relaxed text-sm">
-              {MOCK_PRODUCT.description}
+              {product.description || "Descrição não informada."}
             </p>
           </div>
 

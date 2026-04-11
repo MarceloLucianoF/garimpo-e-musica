@@ -1,9 +1,11 @@
 // src/components/layout/Header.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShoppingBag, Search, Menu } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useCartStore } from "@/store/cartStore";
 import { CartDrawer } from "@/components/features/checkout/CartDrawer";
 
@@ -11,6 +13,21 @@ export function Header() {
   const totalItems = useCartStore((state) => state.totalItems());
   // Estado local para abrir/fechar a gaveta do carrinho
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isAdminLogged, setIsAdminLogged] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAdminLogged(Boolean(user));
+    });
+
+    return unsubscribe;
+  }, []);
 
   return (
     <>
@@ -35,6 +52,9 @@ export function Header() {
               <Link href="/a-loja" className="font-sans font-medium text-garimpo-dark/80 hover:text-garimpo-rust transition-colors">A Loja</Link>
               <Link href="/brecho" className="font-sans font-medium text-garimpo-dark/80 hover:text-garimpo-rust transition-colors">Brechó</Link>
               <Link href="/musica" className="font-sans font-medium text-garimpo-dark/80 hover:text-garimpo-rust transition-colors">Música</Link>
+              {isAdminLogged && (
+                <Link href="/admin/dashboard" className="font-sans font-semibold text-garimpo-rust hover:text-garimpo-rust-hover transition-colors">Painel Admin</Link>
+              )}
             </nav>
 
             {/* Ícones de Ação */}
@@ -50,7 +70,7 @@ export function Header() {
                 aria-label="Carrinho"
               >
                 <ShoppingBag size={22} />
-                {totalItems > 0 && (
+                {isMounted && totalItems > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-garimpo-rust text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
                     {totalItems}
                   </span>

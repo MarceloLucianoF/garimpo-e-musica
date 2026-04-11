@@ -240,15 +240,15 @@ export default function CheckoutPage() {
 							<div className="mt-6 space-y-3 border-t border-garimpo-dark/10 pt-5 text-sm">
 								<div className="flex items-center justify-between text-garimpo-dark/70">
 									<span>Itens</span>
-									<span>{totalItems()}</span>
+									<span>{totalItems}</span>
 								</div>
 								<div className="flex items-center justify-between text-garimpo-dark/70">
 									<span>Subtotal</span>
-									<span>R$ {subtotal().toFixed(2).replace(".", ",")}</span>
+									<span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
 								</div>
 								<div className="flex items-center justify-between text-base font-semibold text-garimpo-dark">
 									<span>Total</span>
-									<span>R$ {subtotal().toFixed(2).replace(".", ",")}</span>
+									<span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
 								</div>
 							</div>
 
