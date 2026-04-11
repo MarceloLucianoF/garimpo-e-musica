@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", "Georgia", serif;
+  --font-sans: "Inter", "system-ui", sans-serif;
+
+  --color-garimpo-bg: oklch(0.98 0.01 85); 
+  --color-garimpo-dark: oklch(0.25 0.02 260); 
+  --color-garimpo-rust: oklch(0.60 0.15 45); 
+  --color-garimpo-rust-hover: oklch(0.50 0.15 45);
+  --color-garimpo-olive: oklch(0.55 0.08 140);
+
+  --shadow-card: 0 4px 20px -2px oklch(0% 0 0 / 0.08);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-garimpo-bg);
+    color: var(--color-garimpo-dark);
+    color-scheme: light dark; 
+  }
+}
