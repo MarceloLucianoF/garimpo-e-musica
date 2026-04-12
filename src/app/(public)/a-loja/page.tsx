@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 
 const STORY_SECTIONS = [
 	{
@@ -23,7 +24,7 @@ const STORY_SECTIONS = [
 
 export default function ALojaPage() {
 	const whatsappHref =
-		"https://wa.me/5548999999999?text=Ol%C3%A1!%20Quero%20conhecer%20o%20Garimpo%20%26%20M%C3%BAsica%20na%20Lagoa%20da%20Concei%C3%A7%C3%A3o.";
+		"https://wa.me/5548996404427?text=Quero%20conhecer%20o%20Garimpo%20%26%20M%C3%BAsica%20na%20Lagoa%20da%20Concei%C3%A7%C3%A3o.";
 
 	return (
 		<main className="bg-garimpo-bg text-garimpo-dark">
@@ -54,9 +55,10 @@ export default function ALojaPage() {
 							href={whatsappHref}
 							target="_blank"
 							rel="noreferrer"
-							className="mt-6 inline-flex items-center justify-center rounded-full bg-garimpo-rust px-5 py-3 font-sans font-medium text-white transition-colors hover:bg-garimpo-rust-hover"
+							className="group mt-6 inline-flex items-center justify-between gap-3 rounded-full bg-garimpo-rust px-5 py-3 font-sans font-medium text-white transition-colors hover:bg-garimpo-rust-hover"
 						>
-							Falar com a loja
+							<span>Falar com a loja</span>
+							<ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
 						</a>
 					</div>
 				</div>

@@ -18,6 +18,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { auth, db, storage } from "@/lib/firebase";
+import { CONDITIONS, CONDITION_OPTIONS, serializeCondition } from "@/lib/constants/conditions";
 import { slugify } from "@/lib/utils";
 
 const productSchema = z
@@ -37,6 +38,7 @@ const productSchema = z
     format: z.enum(["vinyl_lp", "cd"]).optional(),
     conditionMedia: z.enum(["M", "NM", "VG+", "VG", "G"]).optional(),
     conditionSleeve: z.enum(["M", "NM", "VG+", "VG", "G"]).optional(),
+    spotifyUrl: z.string().optional(),
     category: z.string().optional(),
     size: z.string().optional(),
   })
@@ -75,7 +77,6 @@ const musicFormats = [
   { label: "CD", value: "cd" },
 ];
 
-const conditionOptions = ["M", "NM", "VG+", "VG", "G"] as const;
 const fashionCategories = ["Jaquetas", "Camisetas", "Calças", "Vestidos", "Acessórios", "Outros"];
 const fashionSizes = ["PP", "P", "M", "G", "GG", "Único"];
 
@@ -91,6 +92,7 @@ const defaultValues: Omit<ProductFormValues, "images"> = {
   format: "vinyl_lp",
   conditionMedia: "NM",
   conditionSleeve: "NM",
+  spotifyUrl: "",
   category: "Jaquetas",
   size: "M",
 };
@@ -143,6 +145,7 @@ export default function NovoProdutoPage() {
     setValue("format", undefined);
     setValue("conditionMedia", undefined);
     setValue("conditionSleeve", undefined);
+    setValue("spotifyUrl", "");
   }, [setValue, watchedType]);
 
   const imageCountLabel = useMemo(() => {
@@ -196,11 +199,13 @@ export default function NovoProdutoPage() {
               format: values.format,
               conditionMedia: values.conditionMedia,
               conditionSleeve: values.conditionSleeve,
+              spotifyUrl: values.spotifyUrl?.trim() || null,
               genre: [],
             }
           : {
               category: values.category,
               size: values.size,
+              spotifyUrl: null,
             }),
       });
 
@@ -360,9 +365,9 @@ export default function NovoProdutoPage() {
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-garimpo-dark/80">Condição da mídia</span>
                   <select className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition-colors focus:border-garimpo-rust" {...register("conditionMedia")}>
-                    {conditionOptions.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
+                    {CONDITION_OPTIONS.map((item) => (
+                      <option key={item} value={serializeCondition(item)}>
+                        {CONDITIONS[item].label}
                       </option>
                     ))}
                   </select>
@@ -372,13 +377,22 @@ export default function NovoProdutoPage() {
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-garimpo-dark/80">Condição da capa</span>
                   <select className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition-colors focus:border-garimpo-rust" {...register("conditionSleeve")}>
-                    {conditionOptions.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
+                    {CONDITION_OPTIONS.map((item) => (
+                      <option key={item} value={serializeCondition(item)}>
+                        {CONDITIONS[item].label}
                       </option>
                     ))}
                   </select>
                   {errors.conditionSleeve && <p className="text-sm text-red-600">{errors.conditionSleeve.message}</p>}
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-medium text-garimpo-dark/80">URL do Spotify</span>
+                  <input
+                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 outline-none transition-colors focus:border-garimpo-rust"
+                    placeholder="https://open.spotify.com/..."
+                    {...register("spotifyUrl")}
+                  />
                 </label>
               </div>
             </section>

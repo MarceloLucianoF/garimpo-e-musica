@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Menu, Star } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { VinylLoader } from "@/components/ui/VinylLoader";
+import { CONDITIONS, normalizeCondition } from "@/lib/constants/conditions";
+import { useCartStore } from "@/store/cartStore";
 
 type ProductImage = {
   url: string;
@@ -19,14 +21,39 @@ type MusicProduct = {
   slug?: string;
   title?: string;
   artist?: string;
+  genre?: string | string[];
   price?: number;
+  stock?: number;
   conditionMedia?: string;
   images?: ProductImage[];
+  createdAt?: { seconds?: number };
 };
 
+function ConditionStars({ condition }: { condition?: string }) {
+  const key = normalizeCondition(condition);
+  const meta = CONDITIONS[key];
+
+  return (
+    <span className="inline-flex items-center gap-1" title={meta.description}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          key={index}
+          size={13}
+          className={index < meta.stars ? "fill-[#F5F1E8] text-[#F5F1E8]" : "text-white/20"}
+        />
+      ))}
+    </span>
+  );
+}
+
 export default function MusicaPage() {
+  const addItem = useCartStore((state) => state.addItem);
   const [products, setProducts] = useState<MusicProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string>("all");
+  const [priceRange, setPriceRange] = useState<string>("all");
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -57,51 +84,327 @@ export default function MusicaPage() {
     void loadProducts();
   }, []);
 
+  const artists = useMemo(
+    () =>
+      [...new Set(products.map((product) => product.artist).filter(Boolean) as string[])]
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 12),
+    [products],
+  );
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const artistOk = selectedArtists.length === 0 || (product.artist ? selectedArtists.includes(product.artist) : false);
+
+      const rawGenre = product.genre;
+      const genreList = Array.isArray(rawGenre)
+        ? rawGenre.map((item) => String(item).toLowerCase())
+        : rawGenre
+          ? [String(rawGenre).toLowerCase()]
+          : [];
+
+      const genreOk = selectedGenre === "all" || genreList.includes(selectedGenre.toLowerCase());
+
+      const price = product.price ?? 0;
+      const priceOk =
+        priceRange === "all" ||
+        (priceRange === "low" && price <= 120) ||
+        (priceRange === "mid" && price > 120 && price <= 260) ||
+        (priceRange === "high" && price > 260);
+
+      return artistOk && genreOk && priceOk;
+    });
+  }, [priceRange, products, selectedArtists, selectedGenre]);
+
+  const sortedRecent = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      const aSeconds = a.createdAt?.seconds ?? 0;
+      const bSeconds = b.createdAt?.seconds ?? 0;
+      return bSeconds - aSeconds;
+    });
+  }, [filteredProducts]);
+
+  const featured = sortedRecent.slice(0, 4);
+
+  const toggleArtist = (artist: string) => {
+    setSelectedArtists((current) =>
+      current.includes(artist) ? current.filter((item) => item !== artist) : [...current, artist],
+    );
+  };
+
+  const handleAddToCart = (product: MusicProduct) => {
+    addItem({
+      id: product.id,
+      title: product.title || "Sem titulo",
+      artist: product.artist || "Artista nao informado",
+      price: product.price || 0,
+      format: "vinyl_lp",
+      image: product.images?.[0]?.url,
+      stock: product.stock,
+      quantity: 1,
+    });
+  };
+
   if (isLoading) {
     return <VinylLoader text="Buscando discos no acervo..." />;
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <header className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
-        <div className="max-w-md">
-          <h1 className="font-display text-4xl font-bold mb-4 text-garimpo-dark">Música & Colecionáveis</h1>
-          <p className="text-garimpo-dark/70">Discos de vinil e CDs selecionados por quem ama música. Peças raras e clássicos para sua coleção.</p>
-        </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-garimpo-dark/40" size={18} />
-            <input type="text" placeholder="Buscar artista ou álbum..." className="w-full pl-10 pr-4 py-2 rounded-lg border border-garimpo-dark/10 focus:outline-garimpo-rust" />
+    <div className="min-h-screen bg-zinc-900 text-[#F5F1E8]">
+      <section className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6 lg:px-8 lg:py-12">
+        <div className="mb-10 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/50">Lado A Discos</p>
+            <h1 className="mt-3 font-display text-4xl font-bold text-[#F5F1E8] md:text-5xl">Acervo de Vinil</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65 md:text-base">
+              Colecao com curadoria independente para quem compra musica como experiencia.
+            </p>
           </div>
-          <button className="p-2 border border-garimpo-dark/10 rounded-lg hover:bg-white transition-colors"><SlidersHorizontal size={20} /></button>
+          <button
+            type="button"
+            onClick={() => setIsFiltersOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-[#F5F1E8] md:hidden"
+          >
+            <Menu size={16} />
+            Filtros
+          </button>
         </div>
-      </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-        {products.map((disco) => (
-          <Link key={disco.id} href={`/musica/${disco.slug || disco.id}`} className="group flex flex-col">
-            <article className="flex h-full flex-col">
-              <div className="relative aspect-square overflow-hidden rounded-xl mb-4 bg-white shadow-sm border border-garimpo-dark/5 transition-all group-hover:shadow-card group-hover:-translate-y-1">
-                <Image
-                  src={disco.images?.[0]?.url || "/vinil-card.jpg"}
-                  alt={disco.title || "Produto musical"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 50vw, 25vw"
-                />
-                <span className="absolute top-3 right-3 bg-garimpo-dark/90 text-white text-[10px] font-bold px-2 py-1 rounded">
-                  {disco.conditionMedia || "VG"}
-                </span>
+        <div className="flex items-start gap-8">
+          <aside className="hidden w-64 shrink-0 rounded-3xl border border-zinc-800 bg-zinc-950 p-5 md:block">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/45">Filtros</p>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-[#F5F1E8]">Artistas</h3>
+              <div className="mt-3 space-y-2">
+                {artists.map((artist) => (
+                  <button
+                    key={artist}
+                    type="button"
+                    onClick={() => toggleArtist(artist)}
+                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                      selectedArtists.includes(artist)
+                        ? "border-[#F5F1E8] bg-zinc-800 text-[#F5F1E8]"
+                        : "border-zinc-800 bg-zinc-900 text-white/70 hover:border-zinc-600"
+                    }`}
+                  >
+                    {artist}
+                  </button>
+                ))}
               </div>
-              <h3 className="font-display font-bold text-lg leading-tight group-hover:text-garimpo-rust transition-colors">{disco.title || "Sem título"}</h3>
-              <p className="text-sm text-garimpo-dark/60 mb-2">{disco.artist || "Artista não informado"}</p>
-              <p className="font-sans font-semibold text-garimpo-rust">
-                R$ {(disco.price ?? 0).toFixed(2).replace(".", ",")}
+            </div>
+
+            <div className="mt-7">
+              <h3 className="text-sm font-semibold text-[#F5F1E8]">Genero</h3>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                {[
+                  { label: "Todos", value: "all" },
+                  { label: "Rock", value: "rock" },
+                  { label: "MPB", value: "mpb" },
+                  { label: "Jazz", value: "jazz" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedGenre(option.value)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                      selectedGenre === option.value
+                        ? "border-[#F5F1E8] bg-zinc-800 text-[#F5F1E8]"
+                        : "border-zinc-800 bg-zinc-900 text-white/70 hover:border-zinc-600"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <h3 className="text-sm font-semibold text-[#F5F1E8]">Faixa de Preco</h3>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                {[
+                  { label: "Todas", value: "all" },
+                  { label: "Ate R$ 120", value: "low" },
+                  { label: "R$ 121 a R$ 260", value: "mid" },
+                  { label: "Acima de R$ 260", value: "high" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setPriceRange(option.value)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                      priceRange === option.value
+                        ? "border-[#F5F1E8] bg-zinc-800 text-[#F5F1E8]"
+                        : "border-zinc-800 bg-zinc-900 text-white/70 hover:border-zinc-600"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <div className="flex-1 space-y-10">
+            <section id="em-destaque">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="font-display text-3xl font-bold text-[#F5F1E8]">Em Destaque</h2>
+                <span className="text-sm text-white/55">{featured.length} discos selecionados</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                {featured.map((disco) => {
+                  const conditionKey = normalizeCondition(disco.conditionMedia);
+                  const conditionMeta = CONDITIONS[conditionKey];
+
+                  return (
+                    <article key={`featured-${disco.id}`} className="group flex h-full flex-col rounded-3xl border border-zinc-800 bg-zinc-950 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700">
+                      <Link href={`/musica/${disco.slug || disco.id}`} className="relative aspect-square overflow-hidden rounded-2xl bg-zinc-900">
+                        <Image
+                          src={disco.images?.[0]?.url || "/vinil-card.jpg"}
+                          alt={disco.title || "Produto musical"}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                          sizes="(max-width: 1280px) 50vw, 25vw"
+                        />
+                      </Link>
+
+                      <div className="mt-4 flex flex-1 flex-col">
+                        <p className="text-xs uppercase tracking-[0.2em] text-white/40">{disco.artist || "Artista nao informado"}</p>
+                        <h3 className="mt-2 line-clamp-2 font-display text-lg font-bold text-[#F5F1E8]">{disco.title || "Sem titulo"}</h3>
+                        <div className="mt-2 flex items-center gap-2 text-sm text-white/70">
+                          <ConditionStars condition={disco.conditionMedia} />
+                          <span>{conditionMeta.label}</span>
+                        </div>
+                        <p className="mt-4 text-base font-semibold text-[#F5F1E8]">R$ {(disco.price ?? 0).toFixed(2).replace(".", ",")}</p>
+
+                        <div className="mt-4 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(disco)}
+                            disabled={(disco.stock ?? 0) <= 0}
+                            className={`rounded-full px-4 py-2 text-sm font-semibold transition-transform ${
+                              (disco.stock ?? 0) <= 0
+                                ? "bg-zinc-700 text-zinc-300"
+                                : "bg-[#F5F1E8] text-zinc-900 hover:scale-105"
+                            }`}
+                          >
+                            {(disco.stock ?? 0) <= 0 ? "Esgotado" : "Adicionar"}
+                          </button>
+                          <Link href={`/musica/${disco.slug || disco.id}`} className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white">
+                            Detalhes
+                            <ArrowRight size={14} />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section>
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="font-display text-3xl font-bold text-[#F5F1E8]">Recem-Chegados</h2>
+                <span className="text-sm text-white/55">{sortedRecent.length} itens</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {sortedRecent.map((disco) => {
+                  const conditionKey = normalizeCondition(disco.conditionMedia);
+                  const conditionMeta = CONDITIONS[conditionKey];
+
+                  return (
+                    <article key={disco.id} className="group flex h-full flex-col rounded-3xl border border-zinc-800 bg-zinc-950 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700">
+                      <Link href={`/musica/${disco.slug || disco.id}`} className="relative aspect-square overflow-hidden rounded-2xl bg-zinc-900">
+                        <Image
+                          src={disco.images?.[0]?.url || "/vinil-card.jpg"}
+                          alt={disco.title || "Produto musical"}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                          sizes="(max-width: 1280px) 50vw, 33vw"
+                        />
+                      </Link>
+
+                      <div className="mt-4 flex flex-1 flex-col">
+                        <p className="text-xs uppercase tracking-[0.2em] text-white/40">{disco.artist || "Artista nao informado"}</p>
+                        <h3 className="mt-2 line-clamp-2 font-display text-lg font-bold text-[#F5F1E8]">{disco.title || "Sem titulo"}</h3>
+                        <div className="mt-2 flex items-center gap-2 text-sm text-white/70">
+                          <ConditionStars condition={disco.conditionMedia} />
+                          <span>{conditionMeta.label}</span>
+                        </div>
+                        <p className="mt-4 text-base font-semibold text-[#F5F1E8]">R$ {(disco.price ?? 0).toFixed(2).replace(".", ",")}</p>
+
+                        <div className="mt-4 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(disco)}
+                            disabled={(disco.stock ?? 0) <= 0}
+                            className={`rounded-full px-4 py-2 text-sm font-semibold transition-transform ${
+                              (disco.stock ?? 0) <= 0
+                                ? "bg-zinc-700 text-zinc-300"
+                                : "bg-[#F5F1E8] text-zinc-900 hover:scale-105"
+                            }`}
+                          >
+                            {(disco.stock ?? 0) <= 0 ? "Esgotado" : "Adicionar"}
+                          </button>
+                          <Link href={`/musica/${disco.slug || disco.id}`} className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white">
+                            Detalhes
+                            <ArrowRight size={14} />
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section id="sobre" className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+              <h2 className="font-display text-2xl font-bold text-[#F5F1E8]">Sobre a Lado A Discos</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/70 md:text-base">
+                Curadoria especializada para colecionadores e ouvintes exigentes, com foco em procedencia, conservacao e entrega segura para todo o Brasil.
               </p>
-            </article>
-          </Link>
-        ))}
-      </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      {isFiltersOpen && (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button className="absolute inset-0 bg-black/70" onClick={() => setIsFiltersOpen(false)} aria-label="Fechar filtros" />
+          <aside className="absolute left-0 top-0 h-full w-72 border-r border-zinc-800 bg-zinc-950 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/45">Filtros</p>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-[#F5F1E8]">Genero</h3>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                {[
+                  { label: "Todos", value: "all" },
+                  { label: "Rock", value: "rock" },
+                  { label: "MPB", value: "mpb" },
+                  { label: "Jazz", value: "jazz" },
+                ].map((option) => (
+                  <button
+                    key={`mobile-${option.value}`}
+                    type="button"
+                    onClick={() => setSelectedGenre(option.value)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${
+                      selectedGenre === option.value
+                        ? "border-[#F5F1E8] bg-zinc-800 text-[#F5F1E8]"
+                        : "border-zinc-800 bg-zinc-900 text-white/70"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
