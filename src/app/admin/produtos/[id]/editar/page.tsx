@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -83,6 +84,7 @@ export default function EditarProdutoPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompressingUpload, setIsCompressingUpload] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
 
@@ -216,14 +218,24 @@ export default function EditarProdutoPage() {
       if (values.images && values.images.length > 0) {
         const productSlug = slugify(values.title);
         const files = Array.from(values.images);
+        setIsCompressingUpload(true);
 
         uploadedImages = await Promise.all(
           files.map(async (file, index) => {
+            const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
+            const compressedFile = await imageCompression(file, options);
+
+            console.log("[image-compression][editar-produto]", {
+              fileName: file.name,
+              originalSizeKB: Number((file.size / 1024).toFixed(2)),
+              compressedSizeKB: Number((compressedFile.size / 1024).toFixed(2)),
+            });
+
             const extension = file.name.split(".").pop() || "jpg";
             const fileName = `${productSlug}-${index + 1}.${extension}`;
             const filePath = `products/${values.type}/${productSlug}/${fileName}`;
             const fileRef = ref(storage, filePath);
-            const snapshot = await uploadBytes(fileRef, file);
+            const snapshot = await uploadBytes(fileRef, compressedFile);
             const url = await getDownloadURL(snapshot.ref);
 
             return {
@@ -233,6 +245,8 @@ export default function EditarProdutoPage() {
             };
           }),
         );
+
+        setIsCompressingUpload(false);
       }
 
       await updateDoc(doc(db, "products", productId), {
@@ -265,6 +279,7 @@ export default function EditarProdutoPage() {
     } catch {
       setSubmitError("Nao foi possivel atualizar o produto. Tente novamente.");
     } finally {
+      setIsCompressingUpload(false);
       setIsSaving(false);
     }
   };
@@ -443,6 +458,10 @@ export default function EditarProdutoPage() {
               <input type="file" accept="image/*" multiple className="sr-only" {...register("images")} />
               <span className="text-sm text-garimpo-dark/60">{imageCountLabel}</span>
             </label>
+
+            {isCompressingUpload && (
+              <p className="mt-3 text-sm font-medium text-garimpo-rust">Comprimindo e enviando imagem...</p>
+            )}
 
             {existingImages.length > 0 && (
               <p className="mt-3 text-sm text-garimpo-dark/60">{existingImages.length} imagem(ns) atual(is) salvas.</p>

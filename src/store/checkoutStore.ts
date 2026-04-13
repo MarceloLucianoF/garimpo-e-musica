@@ -7,6 +7,7 @@ export type DeliveryOption = "pickup" | "shipping";
 export type CheckoutAddress = {
   cep: string;
   street: string;
+  neighborhood: string;
   number: string;
   city: string;
   state: string;
@@ -43,6 +44,7 @@ const defaultState: CheckoutState = {
   address: {
     cep: "",
     street: "",
+    neighborhood: "",
     number: "",
     city: "",
     state: "SC",

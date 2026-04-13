@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Truck, Home, Plus, Minus, Trash2 } from "lucide-react";
+import { Package, Truck, Home, Plus, Minus, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { useCheckoutStore } from "@/store/checkoutStore";
+import { showToast } from "@/store/toastStore";
 
 const SHIPPING_RATES = [
   { label: "PAC", cost: 34.05 },
@@ -29,14 +31,26 @@ export function CartStep() {
   const updateAddress = useCheckoutStore((state) => state.updateAddress);
   const [cep, setCep] = useState("");
   const [ratesVisible, setRatesVisible] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
 
   const finalTotal = useMemo(() => subtotal + shippingCost, [shippingCost, subtotal]);
 
   const handleCalculateShipping = () => {
     if (cep.replace(/\D/g, "").length < 8) {
+      setShippingError("Informe um CEP valido para calcular o frete.");
+      showToast({
+        title: "CEP obrigatorio",
+        message: "Preencha o CEP para calcular frete",
+        quantity: 0,
+        totalItems,
+        total: finalTotal,
+        variant: "warning",
+        type: "error",
+      });
       return;
     }
 
+    setShippingError(null);
     setDeliveryOption("shipping");
     setRatesVisible(true);
     updateAddress({ cep });
@@ -83,7 +97,7 @@ export function CartStep() {
       <div className="space-y-4">
         {items.map((item) => (
           <div key={item.id} className="flex gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
-            <div className="relative h-20 w-20 overflow-hidden rounded-xl bg-zinc-800">
+            <Link href={`/musica/${item.id}`} className="relative h-20 w-20 overflow-hidden rounded-xl bg-zinc-800">
               {item.image ? (
                 <Image src={item.image} alt={item.title} fill className="object-cover" sizes="80px" />
               ) : (
@@ -91,9 +105,11 @@ export function CartStep() {
                   <Package size={24} />
                 </div>
               )}
-            </div>
+            </Link>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate font-semibold text-[#F5F1E8]">{item.title}</h3>
+              <Link href={`/musica/${item.id}`} className="truncate font-semibold text-[#F5F1E8] hover:underline">
+                {item.title}
+              </Link>
               <p className="text-sm text-white/60">{item.artist}</p>
               <p className="mt-2 text-sm text-white/65">{item.format}</p>
               <p className="mt-1 font-semibold text-[#F5F1E8]">{formatCurrency(item.price * item.quantity)}</p>
@@ -101,10 +117,10 @@ export function CartStep() {
             <div className="flex flex-col items-end gap-2">
               <button
                 onClick={() => removeItem(item.id)}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-white/70 transition-colors hover:text-white"
                 aria-label="Remover item"
               >
-                <Trash2 size={16} />
+                <X size={16} />
               </button>
               <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800">
                 <button
@@ -133,10 +149,18 @@ export function CartStep() {
           <span className="text-sm font-medium text-white/75">CEP</span>
           <input
             value={cep}
-            onChange={(event) => setCep(event.target.value)}
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-[#F5F1E8] outline-none placeholder:text-zinc-400"
+            onChange={(event) => {
+              setCep(event.target.value);
+              if (shippingError) {
+                setShippingError(null);
+              }
+            }}
+            className={`w-full rounded-2xl border bg-zinc-800 px-4 py-3 text-[#F5F1E8] outline-none placeholder:text-zinc-400 ${
+              shippingError ? "border-red-500 animate-shake" : "border-zinc-700"
+            }`}
             placeholder="00000-000"
           />
+          {shippingError && <p className="text-xs font-medium text-red-500">{shippingError}</p>}
         </label>
 
         <button

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type ToastVariant = "success" | "warning";
+export type ToastType = "success" | "error" | "cart";
 
 export type ToastItem = {
   id: string;
@@ -11,6 +12,7 @@ export type ToastItem = {
   totalItems?: number;
   total?: number;
   variant: ToastVariant;
+  type: ToastType;
 };
 
 type ToastStore = {

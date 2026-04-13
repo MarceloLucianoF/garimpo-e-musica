@@ -125,6 +125,7 @@ export default function MusicaPage() {
   }, [filteredProducts]);
 
   const featured = sortedRecent.slice(0, 4);
+  const featuredLead = featured[0];
 
   const toggleArtist = (artist: string) => {
     setSelectedArtists((current) =>
@@ -246,6 +247,52 @@ export default function MusicaPage() {
           </aside>
 
           <div className="flex-1 space-y-10">
+            {featuredLead && (
+              <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <article className="lg:col-span-2 rounded-3xl border border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-800 p-6 md:p-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Curadoria da Semana</p>
+                  <div className="mt-4 grid items-center gap-6 md:grid-cols-[170px_1fr]">
+                    <div className="relative h-44 w-44 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900">
+                      <Image
+                        src={featuredLead.images?.[0]?.url || "/vinil-card.jpg"}
+                        alt={featuredLead.title || "Disco em destaque"}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                        sizes="176px"
+                      />
+                    </div>
+
+                    <div>
+                      <h2 className="font-display text-3xl font-bold text-[#F5F1E8]">{featuredLead.title || "Selecao especial"}</h2>
+                      <p className="mt-2 text-sm font-medium uppercase tracking-[0.2em] text-white/55">{featuredLead.artist || "Artista"}</p>
+                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/75 md:text-base">
+                        Uma edicao que marca geracao, com pressagem cobicada e presenca sonora que justifica cada giro no prato.
+                        Recomendacao da semana para quem busca compra com historia.
+                      </p>
+                      <div className="mt-5 flex items-center gap-3">
+                        <Link
+                          href={`/musica/${featuredLead.slug || featuredLead.id}`}
+                          className="inline-flex items-center justify-center rounded-full bg-[#F5F1E8] px-5 py-2.5 text-sm font-bold text-zinc-900 transition-transform hover:scale-105"
+                        >
+                          Ouvir e Comprar
+                        </Link>
+                        <p className="text-sm font-semibold text-white/75">R$ {(featuredLead.price ?? 0).toFixed(2).replace(".", ",")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <aside className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/45">Selecao</p>
+                  <h3 className="mt-3 font-display text-2xl font-bold text-[#F5F1E8]">Vinil com alma</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                    Cada disco do Lado A passa por triagem de estado, audio e relevancia cultural antes de entrar no acervo.
+                  </p>
+                </aside>
+              </section>
+            )}
+
             <section id="em-destaque">
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="font-display text-3xl font-bold text-[#F5F1E8]">Em Destaque</h2>

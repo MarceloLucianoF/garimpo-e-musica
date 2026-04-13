@@ -47,6 +47,7 @@ export const useCartStore = create<CartStore>()(
 								totalItems: currentItems.reduce((total, cartItem) => total + cartItem.quantity, 0),
 								total: currentItems.reduce((total, cartItem) => total + cartItem.price * cartItem.quantity, 0),
 								variant: "warning",
+								type: "error",
 							});
 
 							return state;
@@ -70,6 +71,7 @@ export const useCartStore = create<CartStore>()(
 								totalItems: currentItems.reduce((total, cartItem) => total + cartItem.quantity, 0),
 								total: currentItems.reduce((total, cartItem) => total + cartItem.price * cartItem.quantity, 0),
 							variant: "warning",
+							type: "error",
 						});
 
 						return state;
@@ -93,6 +95,7 @@ export const useCartStore = create<CartStore>()(
 						totalItems: nextState.items.reduce((total, cartItem) => total + cartItem.quantity, 0),
 						total: nextState.items.reduce((total, cartItem) => total + cartItem.price * cartItem.quantity, 0),
 						variant: "success",
+						type: "cart",
 					});
 
 					return nextState;

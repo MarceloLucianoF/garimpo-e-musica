@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@mercadopago/sdk-react": "^1.0.7",
+    "browser-image-compression": "^2.0.2",
     "firebase": "^12.12.0",
     "firebase-admin": "^13.8.0",
     "lucide-react": "^1.8.0",

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -163,11 +164,20 @@ export default function NovoProdutoPage() {
 
       const uploadedImages = await Promise.all(
         files.map(async (file, index) => {
+          const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
+          const compressedFile = await imageCompression(file, options);
+
+          console.log("[image-compression][novo-produto]", {
+            fileName: file.name,
+            originalSizeKB: Number((file.size / 1024).toFixed(2)),
+            compressedSizeKB: Number((compressedFile.size / 1024).toFixed(2)),
+          });
+
           const extension = file.name.split(".").pop() || "jpg";
           const fileName = `${productSlug}-${index + 1}.${extension}`;
           const filePath = `products/${values.type}/${productSlug}/${fileName}`;
           const fileRef = ref(storage, filePath);
-          const snapshot = await uploadBytes(fileRef, file);
+          const snapshot = await uploadBytes(fileRef, compressedFile);
           const url = await getDownloadURL(snapshot.ref);
 
           return {
