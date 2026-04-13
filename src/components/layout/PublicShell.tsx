@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/layout/Header";
+import { CookieConsent } from "@/components/ui/CookieConsent";
 import { ToastViewport } from "@/components/ui/ToastViewport";
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
     <div className={`flex min-h-screen flex-col ${isDarkCommerceRoute ? "bg-zinc-900 text-[#F5F1E8]" : "bg-garimpo-bg text-garimpo-dark"}`}>
       {!shouldHideDefaultHeader && <Header />}
       <main className="flex-grow">{children}</main>
+      <CookieConsent />
       <ToastViewport />
     </div>
   );

@@ -15,6 +15,8 @@ export type CartItem = {
 
 type CartStore = {
 	items: CartItem[];
+	hydrated: boolean;
+	setHydrated: (value: boolean) => void;
 	addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
 	removeItem: (id: string) => void;
 	updateQuantity: (id: string, quantity: number) => void;
@@ -27,6 +29,8 @@ export const useCartStore = create<CartStore>()(
 	persist(
 		(set, get) => ({
 			items: [],
+			hydrated: false,
+			setHydrated: (value) => set({ hydrated: value }),
 
 			addItem: (item) => {
 				const quantityToAdd = Math.max(1, item.quantity ?? 1);
@@ -140,6 +144,9 @@ export const useCartStore = create<CartStore>()(
 		{
 			name: "garimpo-cart-storage",
 			partialize: (state) => ({ items: state.items }),
+			onRehydrateStorage: () => (state) => {
+				state?.setHydrated(true);
+			},
 		},
 	),
 );

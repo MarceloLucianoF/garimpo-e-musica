@@ -17,6 +17,15 @@ function formatCurrency(value: number) {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
+function formatCepMask(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
 export function CartStep() {
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -83,7 +92,7 @@ export function CartStep() {
   }
 
   return (
-    <section className="space-y-6 rounded-[1.75rem] border border-zinc-800 bg-zinc-950 p-5 md:p-7 shadow-sm">
+    <section className="w-full max-w-full space-y-6 rounded-[1.75rem] border border-zinc-800 bg-zinc-950 p-5 md:p-7 shadow-sm">
       <div className="mb-2 flex items-center gap-3">
         <div className="rounded-full bg-zinc-900 p-2 text-[#F5F1E8]">
           <Package size={18} />
@@ -96,7 +105,7 @@ export function CartStep() {
 
       <div className="space-y-4">
         {items.map((item) => (
-          <div key={item.id} className="flex gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
+          <div key={item.id} className="flex w-full max-w-full flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-3 sm:flex-row">
             <Link href={`/musica/${item.id}`} className="relative h-20 w-20 overflow-hidden rounded-xl bg-zinc-800">
               {item.image ? (
                 <Image src={item.image} alt={item.title} fill className="object-cover" sizes="80px" />
@@ -114,7 +123,7 @@ export function CartStep() {
               <p className="mt-2 text-sm text-white/65">{item.format}</p>
               <p className="mt-1 font-semibold text-[#F5F1E8]">{formatCurrency(item.price * item.quantity)}</p>
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end">
               <button
                 onClick={() => removeItem(item.id)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-white/70 transition-colors hover:text-white"
@@ -148,9 +157,10 @@ export function CartStep() {
         <label className="space-y-2 md:col-span-2">
           <span className="text-sm font-medium text-white/75">CEP</span>
           <input
+            inputMode="numeric"
             value={cep}
             onChange={(event) => {
-              setCep(event.target.value);
+              setCep(formatCepMask(event.target.value));
               if (shippingError) {
                 setShippingError(null);
               }

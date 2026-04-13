@@ -26,6 +26,33 @@ function formatPhoneMask(value: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+function formatCpfMask(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  }
+
+  if (digits.length <= 9) {
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  }
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function formatCepMask(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
 export function DeliveryStep() {
   const customer = useCheckoutStore((state) => state.customer);
   const address = useCheckoutStore((state) => state.address);
@@ -195,7 +222,7 @@ export function DeliveryStep() {
   };
 
   return (
-    <section className="space-y-6 rounded-[1.75rem] border border-zinc-800 bg-zinc-950 p-5 md:p-7 shadow-sm">
+    <section className="w-full max-w-full space-y-6 rounded-[1.75rem] border border-zinc-800 bg-zinc-950 p-5 md:p-7 shadow-sm">
       <div className="mb-2">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/55">Etapa 2</p>
         <h2 className="mt-2 font-display text-2xl font-bold text-[#F5F1E8]">Entrega e dados do cliente</h2>
@@ -215,8 +242,9 @@ export function DeliveryStep() {
         <label className="space-y-2">
           <span className="text-sm font-medium text-white/75">CPF</span>
           <input
+            inputMode="numeric"
             value={customer.cpf}
-            onChange={(event) => updateCustomer({ cpf: event.target.value })}
+            onChange={(event) => updateCustomer({ cpf: formatCpfMask(event.target.value) })}
             className={`w-full rounded-2xl border bg-zinc-800 px-4 py-3 text-[#F5F1E8] outline-none placeholder:text-zinc-400 ${invalidField === "cpf" ? "border-red-500 animate-shake" : "border-zinc-700"}`}
             placeholder="000.000.000-00"
           />
@@ -247,8 +275,9 @@ export function DeliveryStep() {
         <label className="space-y-2 md:col-span-2">
           <span className="text-sm font-medium text-white/75">CEP</span>
           <input
+            inputMode="numeric"
             value={address.cep}
-            onChange={(event) => updateAddress({ cep: event.target.value })}
+            onChange={(event) => updateAddress({ cep: formatCepMask(event.target.value) })}
             onBlur={handleCepBlur}
             className={`w-full rounded-2xl border bg-zinc-800 px-4 py-3 text-[#F5F1E8] outline-none placeholder:text-zinc-400 ${invalidField === "cep" ? "border-red-500 animate-shake" : "border-zinc-700"}`}
             placeholder="00000-000"

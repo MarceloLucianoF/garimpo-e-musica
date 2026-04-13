@@ -22,6 +22,7 @@ export function Header() {
   const shouldShowCart = pathname.startsWith("/musica") || pathname === "/checkout";
   const isMusicContext = pathname.startsWith("/musica") || pathname === "/checkout";
   const logoHref = isMusicContext ? "/musica" : "/";
+  const adminHref = isAdminLogged ? "/admin/dashboard" : "/admin/login";
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsMounted(true));
@@ -71,10 +72,7 @@ export function Header() {
               <Link href="/a-loja" className={`font-sans font-medium transition-colors ${isMusicContext ? "text-white/80 hover:text-white" : "text-garimpo-dark/80 hover:text-garimpo-rust"}`}>A Loja</Link>
               <Link href="/brecho" className={`font-sans font-medium transition-colors ${isMusicContext ? "text-white/80 hover:text-white" : "text-garimpo-dark/80 hover:text-garimpo-rust"}`}>Brechó</Link>
               <Link href="/musica" className={`font-sans font-medium transition-colors ${isMusicContext ? "text-white/80 hover:text-white" : "text-garimpo-dark/80 hover:text-garimpo-rust"}`}>Música</Link>
-              <Link href="/admin/login" className={`font-sans text-sm font-medium transition-colors ${isMusicContext ? "text-white/55 hover:text-white/85" : "text-garimpo-dark/60 hover:text-garimpo-rust"}`}>Admin</Link>
-              {isAdminLogged && (
-                <Link href="/admin/dashboard" className="font-sans font-semibold text-garimpo-rust hover:text-garimpo-rust-hover transition-colors">Painel Admin</Link>
-              )}
+              <Link href={adminHref} className={`font-sans text-sm font-medium transition-colors ${isMusicContext ? "text-white/55 hover:text-white/85" : "text-garimpo-dark/60 hover:text-garimpo-rust"}`}>Admin</Link>
             </nav>
 
             {/* Ícones de Ação */}
@@ -140,7 +138,7 @@ export function Header() {
                 { href: "/a-loja", label: "A Loja" },
                 { href: "/brecho", label: "Brechó" },
                 { href: "/musica", label: "Música" },
-                { href: "/admin/login", label: "Admin" },
+                { href: adminHref, label: "Admin" },
               ].map((item) => (
                 <Link
                   key={item.href}
@@ -152,17 +150,6 @@ export function Header() {
                   <ArrowRight size={20} />
                 </Link>
               ))}
-
-              {isAdminLogged && (
-                <Link
-                  href="/admin/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="mt-2 flex items-center justify-between rounded-2xl border border-garimpo-rust/20 bg-garimpo-rust/10 px-5 py-4 font-sans text-base font-semibold text-garimpo-rust transition-colors hover:bg-garimpo-rust/15"
-                >
-                  <span>Painel Admin</span>
-                  <ArrowRight size={18} />
-                </Link>
-              )}
             </nav>
           </aside>
         </div>

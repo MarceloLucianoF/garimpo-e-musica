@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getProductsByContext } from "@/lib/services/product.service";
 
 type ProductImage = {
   url: string;
@@ -30,35 +29,21 @@ export function AchadosRecentes() {
       setIsLoading(true);
 
       try {
-        const recentQuery = query(
-          collection(db, "products"),
-          where("type", "==", "Música"),
-          where("status", "==", "available"),
-          orderBy("createdAt", "desc"),
-          limit(4),
-        );
-
-        const snapshot = await getDocs(recentQuery);
-        const data: MusicProduct[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<MusicProduct, "id">),
-        }));
+        const data = (await getProductsByContext({
+          type: "music",
+          status: "available",
+          orderByCreatedAtDesc: true,
+          limit: 4,
+        })) as MusicProduct[];
 
         setProducts(data);
       } catch {
         try {
-          const fallbackQuery = query(
-            collection(db, "products"),
-            where("type", "==", "Música"),
-            where("status", "==", "available"),
-            limit(4),
-          );
-
-          const fallbackSnapshot = await getDocs(fallbackQuery);
-          const fallbackData: MusicProduct[] = fallbackSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as Omit<MusicProduct, "id">),
-          }));
+          const fallbackData = (await getProductsByContext({
+            type: "music",
+            status: "available",
+            limit: 4,
+          })) as MusicProduct[];
 
           setProducts(fallbackData);
         } catch {

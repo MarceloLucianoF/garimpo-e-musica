@@ -5,31 +5,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { ShoppingBag, MessageCircle, MapPin, Truck, ArrowRight, Star, Headphones } from "lucide-react";
-import { db } from "@/lib/firebase";
 import { CONDITIONS, normalizeCondition } from "@/lib/constants/conditions";
 import { useCartStore } from "@/store/cartStore";
 import { DiscLoader } from "@/components/ui/DiscLoader";
 import { VinylLoader } from "@/components/ui/VinylLoader";
-
-type ProductImage = {
-  url: string;
-};
-
-type Product = {
-  id: string;
-  title?: string;
-  artist?: string;
-  price?: number;
-  stock?: number;
-  format?: string;
-  conditionMedia?: string;
-  conditionSleeve?: string;
-  description?: string;
-  spotifyUrl?: string;
-  images?: ProductImage[];
-};
+import { getProductById } from "@/lib/services/product.service";
+import type { Product } from "@/types";
 
 function ConditionStars({ condition }: { condition?: string }) {
   const normalized = normalizeCondition(condition);
@@ -69,39 +51,11 @@ export default function ProductDetailPage() {
       setIsLoading(true);
 
       try {
-        const slugQuery = query(
-          collection(db, "products"),
-          where("slug", "==", slugParam),
-          where("status", "==", "available"),
-          limit(1),
-        );
-
-        const slugSnapshot = await getDocs(slugQuery);
-
-        if (!slugSnapshot.empty) {
-          const productDoc = slugSnapshot.docs[0];
-          setProduct({
-            id: productDoc.id,
-            ...(productDoc.data() as Omit<Product, "id">),
-          });
-          return;
-        }
-
-        const directDoc = await getDoc(doc(db, "products", slugParam));
-
-        if (directDoc.exists()) {
-          const directData = directDoc.data() as Omit<Product, "id"> & { status?: string };
-
-          if (directData.status === "available") {
-            setProduct({
-              id: directDoc.id,
-              ...(directData as Omit<Product, "id">),
-            });
-            return;
-          }
-        }
-
-        setProduct(null);
+        const loadedProduct = await getProductById(slugParam, {
+          allowSlugLookup: true,
+          status: "available",
+        });
+        setProduct(loadedProduct);
       } catch (error) {
         console.error("[musica/[slug]] Failed to load product", {
           slugParam,

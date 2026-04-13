@@ -1,34 +1,51 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import { collection, doc, getDoc, getFirestore } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { z } from "zod";
+import { getProductById } from "@/lib/services/product.service";
 
-type CheckoutItem = {
-	id: string;
-	title: string;
-	quantity: number;
-	price: number;
-};
-
-type CheckoutPayload = {
-	items?: CheckoutItem[];
-	deliveryOption?: "pickup" | "shipping";
-	shippingCost?: number;
-	address?: {
-		cep?: string;
-		street?: string;
-		number?: string;
-		city?: string;
-		state?: string;
-	};
-	customer?: {
-		name: string;
-		email: string;
-		cpf: string;
-		phone: string;
-		password?: string;
-	};
-};
+const checkoutPayloadSchema = z.object({
+	items: z
+		.array(
+			z.object({
+				id: z.string().min(1),
+				quantity: z.number().int().min(1),
+			}),
+		)
+		.min(1),
+	delivery: z
+		.object({
+			option: z.enum(["pickup", "shipping"]).default("pickup"),
+			shippingCost: z.number().min(0).default(0),
+			address: z
+				.object({
+					cep: z.string().optional(),
+					street: z.string().optional(),
+					number: z.string().optional(),
+					city: z.string().optional(),
+					state: z.string().optional(),
+				})
+				.optional(),
+		})
+		.optional(),
+	deliveryOption: z.enum(["pickup", "shipping"]).optional(),
+	shippingCost: z.number().min(0).default(0),
+	address: z
+		.object({
+			cep: z.string().optional(),
+			street: z.string().optional(),
+			number: z.string().optional(),
+			city: z.string().optional(),
+			state: z.string().optional(),
+		})
+		.optional(),
+	customer: z.object({
+		name: z.string().min(1),
+		email: z.string().email(),
+		cpf: z.string().min(11),
+		phone: z.string().min(10),
+		password: z.string().optional(),
+	}),
+});
 
 const client = new MercadoPagoConfig({
 	accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -40,45 +57,47 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: "MP_ACCESS_TOKEN não configurado." }, { status: 500 });
 		}
 
-		const body = (await request.json()) as CheckoutPayload;
-		const items = body.items ?? [];
-		const deliveryOption = body.deliveryOption ?? "pickup";
-		const shippingCost = Number(body.shippingCost ?? 0);
+		const body = checkoutPayloadSchema.parse(await request.json());
+		const items = body.items;
+		const deliveryOption = body.delivery?.option ?? body.deliveryOption ?? "pickup";
+		const shippingCost = Number(body.delivery?.shippingCost ?? body.shippingCost ?? 0);
 		const customer = body.customer;
-		const address = body.address;
+		const address = body.delivery?.address ?? body.address;
 		const origin = request.headers.get("origin") ?? "http://localhost:3000";
-		const firestore = getFirestore(db.app);
 
-		if (!Array.isArray(items) || items.length === 0) {
-			return NextResponse.json({ error: "Carrinho vazio para criar preferência." }, { status: 400 });
-		}
-
-		const normalizedItems = await Promise.all(
+		const validatedItems = await Promise.all(
 			items.map(async (item) => {
-				const productSnapshot = await getDoc(doc(collection(firestore, "products"), item.id));
-
-				if (!productSnapshot.exists) {
+				const product = await getProductById(item.id);
+				if (!product) {
 					throw new Error(`Produto ${item.id} nao encontrado.`);
 				}
-
-				const productData = productSnapshot.data() as { stock?: number; title?: string };
-				const stock = typeof productData.stock === "number" ? productData.stock : Number.MAX_SAFE_INTEGER;
+				const stock = Number(product.stock ?? 0);
 
 				if (item.quantity > stock) {
-					throw new Error(`Estoque insuficiente para ${productData.title || item.title}.`);
+					throw new Error(`Estoque insuficiente para ${product.title}.`);
 				}
 
 				return {
 					id: String(item.id),
-					title: item.title,
+					title: product.title,
 					quantity: Number(item.quantity),
-					unit_price: Number(item.price),
+					unitPrice: Number(product.price),
 					currency_id: "BRL",
 				};
 			}),
 		);
 
-		const mpItems = [...normalizedItems];
+		const subtotal = validatedItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+		const shipping = deliveryOption === "shipping" ? shippingCost : 0;
+		const total = subtotal + shipping;
+
+		const mpItems = validatedItems.map((item) => ({
+			id: item.id,
+			title: item.title,
+			quantity: item.quantity,
+			unit_price: item.unitPrice,
+			currency_id: item.currency_id,
+		}));
 
 		if (deliveryOption === "shipping" && shippingCost > 0) {
 			mpItems.push({
@@ -91,12 +110,21 @@ export async function POST(request: Request) {
 		}
 
 		const preferenceApi = new Preference(client);
+		const externalReference = `checkout_${Date.now()}`;
 		const preference = await preferenceApi.create({
 			body: {
 				items: mpItems,
+				external_reference: externalReference,
 				metadata: {
+					items: validatedItems.map((item) => ({
+						productId: item.id,
+						title: item.title,
+						quantity: item.quantity,
+						unitPrice: item.unitPrice,
+					})),
 					deliveryOption,
-					shippingCost: deliveryOption === "shipping" ? shippingCost : 0,
+					shippingCost: shipping,
+					totals: { subtotal, shipping, total },
 					customer,
 					address,
 				},

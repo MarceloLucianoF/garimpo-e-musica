@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { ArrowRight, Menu, Star } from "lucide-react";
-import { db } from "@/lib/firebase";
 import { VinylLoader } from "@/components/ui/VinylLoader";
 import { CONDITIONS, normalizeCondition } from "@/lib/constants/conditions";
+import { getProductsByContext } from "@/lib/services/product.service";
 import { useCartStore } from "@/store/cartStore";
 
 type ProductImage = {
@@ -60,18 +59,11 @@ export default function MusicaPage() {
       setIsLoading(true);
 
       try {
-        const productsQuery = query(
-          collection(db, "products"),
-          where("type", "in", ["Música", "music"]),
-          where("status", "==", "available"),
-          where("availableOnline", "==", true),
-        );
-
-        const snapshot = await getDocs(productsQuery);
-        const data: MusicProduct[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<MusicProduct, "id">),
-        }));
+        const data = (await getProductsByContext({
+          type: "music",
+          status: "available",
+          availableOnline: true,
+        })) as MusicProduct[];
 
         setProducts(data);
       } catch {

@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   }, [items.length, resetCheckout]);
 
   return (
-    <main className="min-h-screen bg-zinc-900 text-[#F5F1E8]">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-zinc-900 text-[#F5F1E8]">
       <section className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6 lg:px-8 lg:py-14">
         <div className="mb-8 max-w-3xl">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.35em] text-white/60">Checkout</p>
@@ -50,10 +50,10 @@ export default function CheckoutPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="w-full max-w-full space-y-6">
             <CheckoutProgress />
-            <div className="grid gap-8 lg:grid-cols-[1.35fr_0.9fr] lg:items-start">
-              <div className="space-y-6">
+            <div className="flex w-full max-w-full flex-col gap-8 lg:grid lg:grid-cols-[1.35fr_0.9fr] lg:items-start">
+              <div className="w-full max-w-full space-y-6">
                 {step === 1 && <CartStep />}
                 {step === 2 && <DeliveryStep />}
                 {step === 3 && <PaymentStep />}
